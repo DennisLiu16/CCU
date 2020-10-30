@@ -24,6 +24,12 @@
 #define WAIT_RX 1000
 #define WAIT_EVERY 100
 
+enum Machine{
+	Initial_OK = 1
+
+
+};
+
 
 
 

@@ -22,6 +22,8 @@ DWORD dwThreadID;
 bool bEventRun;
 bool fStopMsg;
 
+int Machine_State;
+
 
 /*Main Function*/
 int main(void){
@@ -177,11 +179,12 @@ int Initial_Serial(int com){
                         );
 
         if(hThreadEvent == INVALID_HANDLE_VALUE){
-            printf("Wait Thread Create Failed\r\n");
+            printf("Wait_Thread Create Failed\r\n");
             return THREAD_CR_ERROR;
         }
         
         bEventRun = TRUE;
+        Machine_State = Initial_OK;
         return SETTING_OK;
     }
 
@@ -200,11 +203,12 @@ char* CCT(int COM_NUM){
 }
 
 int UCC_Initial(HANDLE handle){
-    
+    /*§ï¼g*/
+    DWORD byte;
     if(!Request(handle,SC_C_GET_CCU_VERSIONINFO)){
-        printf("fstopmsg:%d\r\n",fStopMsg);
-        printf("Please Check AccessPort ,Req : SC_C_GET_CCU_VERSIONINFO");
+        printf("Please Check AccessPort ,Req : SC_C_GET_CCU_VERSIONINFO\r\n");
         return -1;
+        
     }
     printf("Get Version Command Send Ok\r\n");
     
@@ -246,7 +250,7 @@ bool Request(HANDLE handle ,WORD Event){
     DWORD byte;
     char test [] = {0x34,0x35,0x36,0x37,0x38,0x39};
     //return WriteFile(hComm,test,strlen(test),&byte,NULL);
-    return WriteFile(hComm,TxBuffer,length,&byte,NULL);
+    return WriteFile(hComm,TxBuffer,length,&byte,&Wol);
 }
 
 /*OverLapped RX CallBack*/
@@ -264,18 +268,19 @@ LONG OnReceiveEvent(void){
     ClearCommError( hComm,
                     &dwErrors,
                     &Rcs );
-    printf("cbInQue:%d\r\n",Rcs.cbInQue);
 
     bResult = ReadFile(hComm,RxBuffer,Rcs.cbInQue,&dwRead,&Rol);
 
     /*Determine Leave or Wait*/
     if(bResult){
         /*Success*/
-        
+        printf("Direct Success Rx\r\n");
     }
     else{
-        if(GetLastError() == ERROR_IO_PENDING)
-        GetOverlappedResult(hComm,&Rol,&dwRead,TRUE);
+        if(GetLastError() == ERROR_IO_PENDING){
+            printf("Before Get overlapped result\r\n");
+            GetOverlappedResult(hComm,&Rol,&dwRead,TRUE);
+        }
 
         
 /*        
@@ -308,13 +313,14 @@ LONG OnReceiveEvent(void){
         }
         SetEvent(Rol.hEvent)
 */
-        printf("Receive Direct Success,Data:\r\n");
+    }
+    printf("Receive Direct Success,Data:\r\n");
         for(int i = 0;i < Rcs.cbInQue;i++)
             printf("%x ",RxBuffer[i]);
         printf("\r\n");
+        printf("\r\n");
         fStopMsg = false;
         return 0;
-    }
 
 }
 
@@ -327,32 +333,45 @@ DWORD ThreadProcEvent(LPVOID pParam){
     Eol.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
 
     while(bEventRun){
-        if(true);
-        else{
-        int state = WaitCommEvent(hComm,&dwEvtMask,&Eol);
-        dwRes = WaitForSingleObject(Eol.hEvent,WAIT_RX);
         
-        switch(dwRes){
         
-            case WAIT_OBJECT_0:
-            {
-                if(dwEvtMask&EV_RXFLAG == EV_RXFLAG){
-                    printf("dwEvtMask:%x\r\n",dwEvtMask);
-                    printf("In EV_RXFLAG\r\n");
-                    OnReceiveEvent();
-                }
+        WaitCommEvent(hComm,&dwEvtMask,&Eol);
+        if(GetLastError()== ERROR_IO_PENDING){
 
-                else if(dwEvtMask&EV_RXCHAR == EV_RXCHAR){
-                    OnReceiveEvent();
-                }
-
-                break;
+            //dwRes = WaitForSingleObject(Eol.hEvent,INFINITE);
+            DWORD dwRead;
+            GetOverlappedResult(hComm,&Eol,&dwRead,TRUE);
+            if(dwEvtMask&EV_RXFLAG == EV_RXFLAG){
+                printf("dwEvtMask:%x\r\n",dwEvtMask);
+                printf("In EV_RXFLAG\r\n");
+                OnReceiveEvent();
             }
-            /*TimeOut*/
+            /*
+            switch(dwRes){
+            
+                case WAIT_OBJECT_0:
+                {
+                    if(dwEvtMask&EV_RXFLAG == EV_RXFLAG){
+                        printf("dwEvtMask:%x\r\n",dwEvtMask);
+                        printf("In EV_RXFLAG\r\n");
+                        OnReceiveEvent();
+                    }
 
-        }
+                    else if(dwEvtMask&EV_RXCHAR == EV_RXCHAR){
+                        OnReceiveEvent();
+                    }
 
+                    break;
+                }
+                //TimeOut
+
+            }
+            */
         }
+        else{
+            printf("Get Something Error:%d\r\n",GetLastError());
+        }
+        
     }
 
     return true;
