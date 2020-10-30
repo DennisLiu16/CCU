@@ -12,9 +12,17 @@
 #define SC_C_GET_CCU_VERSIONINFO   MKWORD (6,DCNC_APP_SC)
 
 /*Private Define */
-#define EVFLAG     EV_RXCHAR|EV_RXFLAG|EV_CTS|EV_DSR|EV_RLSD|EV_BREAK|EV_ERR|EV_RING
-#define IOCLEAR    PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR
-#define SETTING_OK 0
+#define EVFLAG     		EV_RXCHAR|EV_RXFLAG|EV_CTS|EV_DSR|EV_RLSD|EV_BREAK|EV_ERR|EV_RING
+#define IOCLEAR    		PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR
+#define OVERLAPPED_FLAG FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OVERLAPPED
+/*HANDLE ERROR TYPE*/
+#define SETTING_OK 		     0
+#define CREATE_ERROR	    -1
+#define THREAD_CR_ERROR     -2
+
+/*Time Delay Set*/
+#define WAIT_RX 1000
+#define WAIT_EVERY 100
 
 
 
@@ -82,4 +90,21 @@ bool Request(HANDLE handle ,WORD Event);
  * 
  * 	HANDLE : the handle type object
  *  WORD   : the Request function,define above
+ */
+
+LONG OnReceiveEvent(void);
+
+/**
+ * Rx WaitEvent callback
+ * Do ReadFile Fucntion 
+ * 
+ * 
+ */
+
+DWORD ThreadProcEvent(LPVOID pParam);
+/**
+ * Thread - Create for waitEvent
+ * 
+ * 
+ * 
  */

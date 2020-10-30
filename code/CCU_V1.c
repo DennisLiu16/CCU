@@ -1,3 +1,7 @@
+/*OverLapped Reference
+    https://blog.csdn.net/wowocpp/article/details/80609894
+*/
+
 /*Private Include*/
 #include "CCU.h"
 /*Private Define*/
@@ -7,14 +11,17 @@
 unsigned char TxBuffer[32];
 unsigned char RxBuffer[256];
 /*Handle*/
-HANDLE Comm;
+HANDLE hComm;
+HANDLE hThreadEvent;
 /*Overlapped Vars*/
 OVERLAPPED Eol={0};
 OVERLAPPED Wol={0};
 OVERLAPPED Rol={0};
 
 DWORD dwThreadID;
-bool ComStopMsg;
+bool bEventRun;
+bool fStopMsg;
+
 
 /*Main Function*/
 int main(void){
@@ -25,9 +32,8 @@ int main(void){
     State = Initial_Serial(DEFAULT_COM);
     if(SETTING_OK == State){
         /*Initial Succeeded*/
-        /*open thread hold waitcomm*/
-
-        if(UCC_Initial(Comm)){
+        /*Wait Thread Running*/
+        if(UCC_Initial(hComm)){
             
            
         
@@ -40,9 +46,9 @@ int main(void){
 
     }
     else if(State > 0){
-        CloseHandle(Comm);
+        CloseHandle(hComm);
     }
-    
+
 system("PAUSE");
 return 0;
 
@@ -66,17 +72,17 @@ memcat(char *dest, size_t dest_len, const char *src, size_t src_len){
 int Initial_Serial(int com){
     char com_num[] = "";
     strcpy(com_num,CCT(com));
-    Comm = CreateFile(  com_num,                          // COM number              
+    hComm = CreateFile( com_num,                          // COM number              
                         GENERIC_READ | GENERIC_WRITE,     // Read & Write
                         0,                                // No Sharing
                         NULL ,                            // None Security
                         OPEN_EXISTING,                    // Open existing port only
-                        FILE_FLAG_OVERLAPPED,             // Non Overlapped I/O
+                        OVERLAPPED_FLAG,                  // Overlapped I/O
                         NULL   );                         // Null for Comm Devices
     
-    if(Comm == INVALID_HANDLE_VALUE){
+    if(hComm == INVALID_HANDLE_VALUE){
         printf("COM%d Initial Failed,Please Confirm Port Number\r\n",com);
-        return -1;
+        return CREATE_ERROR;
     }
     else{
 
@@ -122,13 +128,13 @@ int Initial_Serial(int com){
         DWORD Insize = 4096;
 		DWORD Outsize = 2048;
 
-        Ok =  SetCommState(Comm,&hcomPara);
+        Ok = SetCommState(hComm,&hcomPara);
         if(!Ok) {
             printf("Set Gerneral Part Failed\r\n");
             return Ok;
         }
 
-        Ok = SetupComm(Comm,Insize,Outsize);
+        Ok = SetupComm(hComm,Insize,Outsize);
         
 
         if(!Ok) {
@@ -137,14 +143,14 @@ int Initial_Serial(int com){
         }
 
 
-        Ok = SetCommTimeouts(Comm,&timeouts);
+        Ok = SetCommTimeouts(hComm,&timeouts);
         if(!Ok) {
             printf("Set TimeOut Part Failed\r\n");
             return Ok;
         }
 
 
-        Ok = SetCommMask(Comm,EVFLAG);
+        Ok = SetCommMask(hComm,EVFLAG);
         if(!Ok) {
             printf("Set Event Part Failed\r\n");
             return Ok;
@@ -154,9 +160,26 @@ int Initial_Serial(int com){
         // GetCommMask(Comm,&mask);
         // printf("%x\r\n",mask);
 
-        PurgeComm(Comm,IOCLEAR);
+        PurgeComm(hComm,IOCLEAR);
 
         printf("All Setting Done!\r\n");
+
+        DWORD dwParam;
+
+        hThreadEvent = CreateThread(NULL,
+                                    0,
+                                    (LPTHREAD_START_ROUTINE) ThreadProcEvent,
+                                    &dwParam,
+                                    0,
+                                    &dwThreadID
+                        );
+
+        if(hThreadEvent == INVALID_HANDLE_VALUE){
+            printf("Wait Thread Create Failed\r\n");
+            return THREAD_CR_ERROR;
+        }
+        
+        bEventRun = TRUE;
         return SETTING_OK;
     }
 
@@ -181,6 +204,7 @@ int UCC_Initial(HANDLE handle){
         return -1;
     }
     printf("Get Version Command Send Ok\r\n");
+    
     /*Other Config Setting*/
 
 
@@ -217,7 +241,117 @@ bool Request(HANDLE handle ,WORD Event){
 
     /*Write To Driver*/
     DWORD byte;
-    
-    return WriteFile(Comm,TxBuffer,length,&byte,NULL);
+    char test [] = {0x34,0x35,0x36,0x37,0x38,0x39};
+    return WriteFile(hComm,test,strlen(test),&byte,NULL);
+    //return WriteFile(hComm,TxBuffer,length,&byte,NULL);
 }
+
+/*OverLapped RX CallBack*/
+LONG OnReceiveEvent(void){
+
+    DWORD dwRes;
+    DWORD dwRead;
+    DWORD dwErrors;
+    COMSTAT Rcs;
+    fStopMsg = true;
+
+    BOOL bResult ;
+    memset(RxBuffer,0,sizeof(RxBuffer));
+
+    ClearCommError( hComm,
+                    &dwErrors,
+                    &Rcs );
+    printf("%d",Rcs.cbInQue);
+    bResult = ReadFile(hComm,RxBuffer,Rcs.cbInQue,NULL,&Rol);
+
+    /*Determine Leave or Wait*/
+    if(bResult){
+        /*Success*/
+        printf("Receive Direct Success,Data:\r\n");
+        for(int i = 0;i < Rcs.cbInQue;i++)
+            printf("%x ",RxBuffer[i]);
+        printf("\r\n");
+    }
+    else{
+
+        Rol.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
+        dwRes = WaitForSingleObject(Rol.hEvent,WAIT_RX);
+
+
+        switch(dwRes){
+            case WAIT_OBJECT_0:
+                bResult = GetOverlappedResult(hComm,&Rol,&dwRead,TRUE);
+
+                if(!bResult)
+                    printf("WaitCom For Read failed\r\n");
+
+                else{
+                    printf("WaitCom For Read success dwRead=%d,Rcs.cbInQue=%d",dwRead,Rcs.cbInQue);
+                    printf("Data:\r\n");
+                    for(int i = 0;i < Rcs.cbInQue;i++)
+                        printf("%x ",RxBuffer[i]);
+                    printf("\r\n"); 
+                }
+                /*Clean Buffer*/
+                memset(RxBuffer,0,sizeof(RxBuffer));
+                break;
+
+            case WAIT_TIMEOUT:
+                printf("WaitCom TimeOut\r\n");
+                break;
+
+        }
+
+        fStopMsg = false;
+        return 0;
+    }
+
+}
+
+/*Event Detecter - SubThread*/
+DWORD ThreadProcEvent(LPVOID pParam){
+
+    DWORD dwEvtMask;
+    DWORD dwRes;
+
+    Eol.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
+
+    while(bEventRun){
+
+        WaitCommEvent(hComm,&dwEvtMask,&Eol);
+        dwRes = WaitForSingleObject(Eol.hEvent,WAIT_EVERY);
+
+        switch(dwRes){
+
+            case WAIT_OBJECT_0:
+
+                switch(dwEvtMask){
+
+                    case EV_RXCHAR:
+                        OnReceiveEvent();
+                        break;
+                    case EV_TXEMPTY:
+                        printf("Tx Finished\r\n");
+                        break;
+
+                    case EV_ERR:
+                        printf("EV_ERR Happened\r\n");
+                        break;
+                    
+
+                }
+
+                break;
+
+            /*TimeOut*/
+
+
+        }
+    }
+
+    return true;
+
+
+}
+
 
