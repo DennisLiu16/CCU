@@ -202,7 +202,8 @@ char* CCT(int COM_NUM){
 int UCC_Initial(HANDLE handle){
     
     if(!Request(handle,SC_C_GET_CCU_VERSIONINFO)){
-        printf("Please Check AccessPort\r\n , SC_C_GET_CCU_VERSIONINFO");
+        printf("fstopmsg:%d\r\n",fStopMsg);
+        printf("Please Check AccessPort ,Req : SC_C_GET_CCU_VERSIONINFO");
         return -1;
     }
     printf("Get Version Command Send Ok\r\n");
@@ -305,6 +306,7 @@ LONG OnReceiveEvent(void){
                 break;
 
         }
+        SetEvent(Rol.hEvent)
 */
         printf("Receive Direct Success,Data:\r\n");
         for(int i = 0;i < Rcs.cbInQue;i++)
@@ -325,16 +327,17 @@ DWORD ThreadProcEvent(LPVOID pParam){
     Eol.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
 
     while(bEventRun){
-
+        if(true);
+        else{
         int state = WaitCommEvent(hComm,&dwEvtMask,&Eol);
-        dwRes = WaitForSingleObject(Eol.hEvent,INFINITE);
-        //if(!state)printf("%d\r\n",GetLastError());
-        printf("dwRes:%d,dwEvtMask:%x\r\n",dwRes,dwEvtMask);
+        dwRes = WaitForSingleObject(Eol.hEvent,WAIT_RX);
+        
         switch(dwRes){
         
             case WAIT_OBJECT_0:
             {
                 if(dwEvtMask&EV_RXFLAG == EV_RXFLAG){
+                    printf("dwEvtMask:%x\r\n",dwEvtMask);
                     printf("In EV_RXFLAG\r\n");
                     OnReceiveEvent();
                 }
@@ -342,14 +345,12 @@ DWORD ThreadProcEvent(LPVOID pParam){
                 else if(dwEvtMask&EV_RXCHAR == EV_RXCHAR){
                     OnReceiveEvent();
                 }
-                else if(dwEvtMask&EV_TXEMPTY == EV_TXEMPTY){
-                    printf("EV_TXEMPTY\r\n");
-                }
 
                 break;
             }
             /*TimeOut*/
 
+        }
 
         }
     }
