@@ -1,11 +1,20 @@
 /*Private Include*/
 #include "CCU.h"
+/*Private Define*/
+#define DEFAULT_COM 5
 
 /*Global Var*/
 unsigned char TxBuffer[32];
 unsigned char RxBuffer[256];
-
+/*Handle*/
 HANDLE Comm;
+/*Overlapped Vars*/
+OVERLAPPED Eol={0};
+OVERLAPPED Wol={0};
+OVERLAPPED Rol={0};
+
+DWORD dwThreadID;
+bool ComStopMsg;
 
 /*Main Function*/
 int main(void){
@@ -20,12 +29,7 @@ int main(void){
 
         if(UCC_Initial(Comm)){
             
-            DWORD EV_Mask;
-            DWORD b;
-            bool trigger = 0;
-            WaitCommEvent(Comm,&EV_Mask,NULL);
-            trigger = WaitCommEvent(Comm,&EV_Mask,NULL);
-            if(trigger) ReadFile(Comm,RxBuffer,9,&b,NULL);
+           
         
         }
         else
@@ -62,13 +66,12 @@ memcat(char *dest, size_t dest_len, const char *src, size_t src_len){
 int Initial_Serial(int com){
     char com_num[] = "";
     strcpy(com_num,CCT(com));
-    Comm = CreateFile(  //"COM7",
-                        com_num,                          // COM number              
+    Comm = CreateFile(  com_num,                          // COM number              
                         GENERIC_READ | GENERIC_WRITE,     // Read & Write
                         0,                                // No Sharing
                         NULL ,                            // None Security
                         OPEN_EXISTING,                    // Open existing port only
-                        0,                                // Non Overlapped I/O
+                        FILE_FLAG_OVERLAPPED,             // Non Overlapped I/O
                         NULL   );                         // Null for Comm Devices
     
     if(Comm == INVALID_HANDLE_VALUE){
@@ -119,10 +122,6 @@ int Initial_Serial(int com){
         DWORD Insize = 4096;
 		DWORD Outsize = 2048;
 
-        
-        DWORD Ev_flag = 0x0|EV_RXCHAR|EV_RXFLAG|EV_CTS|EV_DSR|EV_RLSD|EV_BREAK|EV_ERR|EV_RING;
-
-
         Ok =  SetCommState(Comm,&hcomPara);
         if(!Ok) {
             printf("Set Gerneral Part Failed\r\n");
@@ -145,7 +144,7 @@ int Initial_Serial(int com){
         }
 
 
-        Ok = SetCommMask(Comm,Ev_flag);
+        Ok = SetCommMask(Comm,EVFLAG);
         if(!Ok) {
             printf("Set Event Part Failed\r\n");
             return Ok;
@@ -154,7 +153,9 @@ int Initial_Serial(int com){
         // DWORD mask;
         // GetCommMask(Comm,&mask);
         // printf("%x\r\n",mask);
-        PurgeComm(Comm,PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR);
+
+        PurgeComm(Comm,IOCLEAR);
+
         printf("All Setting Done!\r\n");
         return SETTING_OK;
     }

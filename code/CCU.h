@@ -12,8 +12,10 @@
 #define SC_C_GET_CCU_VERSIONINFO   MKWORD (6,DCNC_APP_SC)
 
 /*Private Define */
-#define DEFAULT_COM 5
+#define EVFLAG     EV_RXCHAR|EV_RXFLAG|EV_CTS|EV_DSR|EV_RLSD|EV_BREAK|EV_ERR|EV_RING
+#define IOCLEAR    PURGE_RXABORT|PURGE_RXCLEAR|PURGE_TXABORT|PURGE_TXCLEAR
 #define SETTING_OK 0
+
 
 
 
@@ -21,10 +23,8 @@
 	Ref : https://www.xanthium.in/Serial-Port-Programming-using-Win32-API
 	Ev-Mask : https://blog.csdn.net/targusyoona/article/details/9624203
 	All Functions: https://nosleep.pixnet.net/blog/post/83847684-%E7%A8%8B%E5%BC%8F%E9%96%8B%E7%99%BC-%7C-kernel32-%E2%80%8Bcomm.c
-
-	VB.Net :SetCommMask https://www.pinvoke.net/default.aspx/kernel32.setcommmask
-	VB.Net :Example http://www.blueshop.com.tw/board/FUM20050124191756KKC/BRD201002062245060M5.html
-
+	Tutorial Source Multiple Thread :https://www.itdaan.com/tw/2de00f652c01c938d5f9aaabe4cb246c
+	
 	OverLap:https://ffyy99.pixnet.net/blog/post/28789992
 
 	Tutorial:https://www.itread01.com/p/872935.html
