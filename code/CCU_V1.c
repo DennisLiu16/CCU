@@ -327,18 +327,19 @@ DWORD ThreadProcEvent(LPVOID pParam){
     while(bEventRun){
 
         int state = WaitCommEvent(hComm,&dwEvtMask,&Eol);
-        dwRes = WaitForSingleObject(Eol.hEvent,WAIT_RX);
+        dwRes = WaitForSingleObject(Eol.hEvent,INFINITE);
         //if(!state)printf("%d\r\n",GetLastError());
-
+        printf("dwRes:%d,dwEvtMask:%x\r\n",dwRes,dwEvtMask);
         switch(dwRes){
         
             case WAIT_OBJECT_0:
             {
-                if(dwEvtMask&EV_RXCHAR == EV_RXCHAR){
+                if(dwEvtMask&EV_RXFLAG == EV_RXFLAG){
+                    printf("In EV_RXFLAG\r\n");
                     OnReceiveEvent();
                 }
 
-                else if(dwEvtMask&EV_RXFLAG == EV_RXFLAG){
+                else if(dwEvtMask&EV_RXCHAR == EV_RXCHAR){
                     OnReceiveEvent();
                 }
                 else if(dwEvtMask&EV_TXEMPTY == EV_TXEMPTY){
