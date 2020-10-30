@@ -33,6 +33,7 @@ int main(void){
     if(SETTING_OK == State){
         /*Initial Succeeded*/
         /*Wait Thread Running*/
+        
         if(UCC_Initial(hComm)){
             
            
@@ -43,13 +44,14 @@ int main(void){
             /* failed */
         }
         
+        
 
     }
     else if(State > 0){
         CloseHandle(hComm);
     }
-
 system("PAUSE");
+CloseHandle(hThreadEvent);
 return 0;
 
     
@@ -242,8 +244,8 @@ bool Request(HANDLE handle ,WORD Event){
     /*Write To Driver*/
     DWORD byte;
     char test [] = {0x34,0x35,0x36,0x37,0x38,0x39};
-    return WriteFile(hComm,test,strlen(test),&byte,NULL);
-    //return WriteFile(hComm,TxBuffer,length,&byte,NULL);
+    //return WriteFile(hComm,test,strlen(test),&byte,NULL);
+    return WriteFile(hComm,TxBuffer,length,&byte,NULL);
 }
 
 /*OverLapped RX CallBack*/
@@ -261,23 +263,25 @@ LONG OnReceiveEvent(void){
     ClearCommError( hComm,
                     &dwErrors,
                     &Rcs );
-    printf("%d",Rcs.cbInQue);
-    bResult = ReadFile(hComm,RxBuffer,Rcs.cbInQue,NULL,&Rol);
+    printf("cbInQue:%d\r\n",Rcs.cbInQue);
+
+    bResult = ReadFile(hComm,RxBuffer,Rcs.cbInQue,&dwRead,&Rol);
 
     /*Determine Leave or Wait*/
     if(bResult){
         /*Success*/
-        printf("Receive Direct Success,Data:\r\n");
-        for(int i = 0;i < Rcs.cbInQue;i++)
-            printf("%x ",RxBuffer[i]);
-        printf("\r\n");
+        
     }
     else{
+        if(GetLastError() == ERROR_IO_PENDING)
+        GetOverlappedResult(hComm,&Rol,&dwRead,TRUE);
 
+        
+/*        
         Rol.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
         dwRes = WaitForSingleObject(Rol.hEvent,WAIT_RX);
 
-
+     
         switch(dwRes){
             case WAIT_OBJECT_0:
                 bResult = GetOverlappedResult(hComm,&Rol,&dwRead,TRUE);
@@ -292,7 +296,7 @@ LONG OnReceiveEvent(void){
                         printf("%x ",RxBuffer[i]);
                     printf("\r\n"); 
                 }
-                /*Clean Buffer*/
+                //Clean Buffer
                 memset(RxBuffer,0,sizeof(RxBuffer));
                 break;
 
@@ -301,7 +305,11 @@ LONG OnReceiveEvent(void){
                 break;
 
         }
-
+*/
+        printf("Receive Direct Success,Data:\r\n");
+        for(int i = 0;i < Rcs.cbInQue;i++)
+            printf("%x ",RxBuffer[i]);
+        printf("\r\n");
         fStopMsg = false;
         return 0;
     }
@@ -318,31 +326,27 @@ DWORD ThreadProcEvent(LPVOID pParam){
 
     while(bEventRun){
 
-        WaitCommEvent(hComm,&dwEvtMask,&Eol);
-        dwRes = WaitForSingleObject(Eol.hEvent,WAIT_EVERY);
+        int state = WaitCommEvent(hComm,&dwEvtMask,&Eol);
+        dwRes = WaitForSingleObject(Eol.hEvent,WAIT_RX);
+        //if(!state)printf("%d\r\n",GetLastError());
 
         switch(dwRes){
-
+        
             case WAIT_OBJECT_0:
+            {
+                if(dwEvtMask&EV_RXCHAR == EV_RXCHAR){
+                    OnReceiveEvent();
+                }
 
-                switch(dwEvtMask){
-
-                    case EV_RXCHAR:
-                        OnReceiveEvent();
-                        break;
-                    case EV_TXEMPTY:
-                        printf("Tx Finished\r\n");
-                        break;
-
-                    case EV_ERR:
-                        printf("EV_ERR Happened\r\n");
-                        break;
-                    
-
+                else if(dwEvtMask&EV_RXFLAG == EV_RXFLAG){
+                    OnReceiveEvent();
+                }
+                else if(dwEvtMask&EV_TXEMPTY == EV_TXEMPTY){
+                    printf("EV_TXEMPTY\r\n");
                 }
 
                 break;
-
+            }
             /*TimeOut*/
 
 
