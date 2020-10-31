@@ -115,6 +115,8 @@ DWORD ThreadProcEvent(LPVOID pParam);
  * 
  */
 
-BOOL Version_Detect(void);
+BOOL Version_Detect_Send(void);
+
+int Read_Thread(void);
 
 

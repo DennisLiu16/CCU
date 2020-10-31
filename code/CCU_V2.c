@@ -21,12 +21,12 @@ bool fStopMsg;
 int main(void){
     Initial_Serial(DEFAULT_COM);
 
-    Version_Detect();
-
+    Version_Detect_Send();
 
     system("PAUSE");
-    CloseHandle(hComm);
     CloseHandle(hThreadEvent);
+    
+    CloseHandle(hComm);
     return 0;
 
 
@@ -129,10 +129,10 @@ int Initial_Serial(int com){
         printf("All Setting Done!\r\n");
 
         DWORD dwParam;
-/*
+
         hThreadEvent = CreateThread(NULL,
                                     0,
-                                    (LPTHREAD_START_ROUTINE) ThreadProcEvent,
+                                    (LPTHREAD_START_ROUTINE) Read_Thread,
                                     &dwParam,
                                     0,
                                     &dwThreadID
@@ -145,7 +145,7 @@ int Initial_Serial(int com){
 
         
         bEventRun = TRUE;
-*/
+
         return SETTING_OK;
     }
 
@@ -163,35 +163,45 @@ char* CCT(int COM_NUM){
     return start;
 }
 
-BOOL Version_Detect(void){
+BOOL Version_Detect_Send(void){
 
     printf("WriteFile Start\r\n");
     DWORD byte;
-    DWORD MASK;
+    
     char cmd [] ={0x1B,0x24,0x0D,0x03,0x02,0x0,0x06,0x10,0x98};
     char test[] = {0x33,0x34,0x35,0x1A,0x0D,0x0A};
 
     WriteFile(hComm,cmd,sizeof(cmd),&byte,NULL);
-    
+    return true;
+}
+
+int Read_Thread(void){
     DWORD dwRes;
     DWORD dwRead;
     DWORD dwErrors;
+    DWORD byte;
+    DWORD MASK;
     COMSTAT Rcs;
-    DWORD length = 0;
-    do{
-    ClearCommError( hComm,
-                    &dwErrors,
-                    &Rcs );
+    while(bEventRun){
+        
+        ClearCommError( hComm,
+                        &dwErrors,
+                        &Rcs );
 
-    
-    WaitCommEvent(hComm,&MASK,NULL);
-    
-    ReadFile(hComm,RxBuffer,256,&byte,NULL);
-    for(int i =0;i<byte;i++)
-    {printf("%x ",RxBuffer[i]);}
-    
-    }while(true);
-
-    
+        
+        WaitCommEvent(hComm,&MASK,NULL);
+        
+        ReadFile(hComm,RxBuffer,256,&byte,NULL);
+        printf("byte:%d\r\n",byte);
+        printf("Read Data:");
+        if(MASK&EV_RXCHAR){
+            
+            for(int i = 0;i<byte;i++){
+                printf(" 0x%02X ",RxBuffer[i]);
+            }
+            printf("\r\n");
+        }
+    }
+    return 0;
 
 }
