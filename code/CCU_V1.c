@@ -329,12 +329,22 @@ DWORD ThreadProcEvent(LPVOID pParam){
 
     DWORD dwEvtMask;
     DWORD dwRes;
-
+    Wol.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
     Eol.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
 
     while(bEventRun){
-        
-        
+        /*Req Part*/
+        WaitCommEvent(hComm,&dwEvtMask,&Wol);
+        if(GetLastError()== ERROR_IO_PENDING){
+            DWORD dwWrite;
+            //GetOverlappedResult(hComm,&Wol,&dwWrite,TRUE);
+            if(dwEvtMask&EV_TXEMPTY == EV_TXEMPTY){
+                printf("Send Finished\r\n");
+            }
+        }
+
+
+
         WaitCommEvent(hComm,&dwEvtMask,&Eol);
         if(GetLastError()== ERROR_IO_PENDING){
 
