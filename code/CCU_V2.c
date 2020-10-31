@@ -228,7 +228,7 @@ int Read_Thread(void){
             }
             else{
                 if(GetOverlappedResult(hComm,&olRead,&dwRead,TRUE) == FALSE){
-                    
+                    printf("Hello\r\n");
                 }
                 else if(dwRead == 0){
                     printf("Nothing To Read \r\n");
