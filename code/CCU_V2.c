@@ -16,7 +16,7 @@ OVERLAPPED Rol={0};
 
 DWORD dwThreadID;
 bool bEventRun;
-bool fStopMsg;
+bool fStopRead = 0;
 
 int main(void){
     Initial_Serial(DEFAULT_COM);
@@ -24,8 +24,9 @@ int main(void){
     Version_Detect_Send();
 
     system("PAUSE");
+    fStopRead = 1;
     CloseHandle(hThreadEvent);
-    
+
     CloseHandle(hComm);
     return 0;
 
@@ -182,7 +183,7 @@ int Read_Thread(void){
     DWORD byte;
     DWORD MASK;
     COMSTAT Rcs;
-    while(bEventRun){
+    while(bEventRun && !fStopRead){
         
         ClearCommError( hComm,
                         &dwErrors,
@@ -194,14 +195,15 @@ int Read_Thread(void){
         ReadFile(hComm,RxBuffer,256,&byte,NULL);
         printf("byte:%d\r\n",byte);
         printf("Read Data:");
-        if(MASK&EV_RXCHAR){
+        
             
-            for(int i = 0;i<byte;i++){
-                printf(" 0x%02X ",RxBuffer[i]);
-            }
-            printf("\r\n");
+        for(int i = 0;i < byte;i++){
+            printf(" 0x%02X ",RxBuffer[i]);
         }
+        printf("\r\n");
+        
     }
+    printf("Leave\r\n");
     return 0;
 
 }
