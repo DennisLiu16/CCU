@@ -9,10 +9,6 @@ unsigned char RxBuffer[256];
 /*Handle*/
 HANDLE hComm;
 HANDLE hThreadEvent;
-/*Overlapped Vars*/
-OVERLAPPED Eol={0};
-OVERLAPPED Wol={0};
-OVERLAPPED Rol={0};
 
 DWORD dwThreadID;
 bool bEventRun;
@@ -42,7 +38,7 @@ int Initial_Serial(int com){
                         0,                                // No Sharing
                         NULL ,                            // None Security
                         OPEN_EXISTING,                    // Open existing port only
-                        0,                                // Overlapped I/O
+                        OVERLAPPED_FLAG,                  // Overlapped I/O
                         NULL   );                         // Null for Comm Devices
     
     if(hComm == INVALID_HANDLE_VALUE){
@@ -168,39 +164,86 @@ BOOL Version_Detect_Send(void){
 
     printf("WriteFile Start\r\n");
     DWORD byte;
-    
     char cmd [] ={0x1B,0x24,0x0D,0x03,0x02,0x0,0x06,0x10,0x98};
     char test[] = {0x33,0x34,0x35,0x1A,0x0D,0x0A};
 
-    WriteFile(hComm,cmd,sizeof(cmd),&byte,NULL);
+    OVERLAPPED olWrite;
+    olWrite.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
+
+
+    if(WriteFile(hComm,cmd,sizeof(cmd),&byte,&olWrite)==FALSE){
+        if(GetLastError() != ERROR_IO_PENDING){
+            printf("Write File Error \r\n");
+        }
+
+        else{
+            if(GetOverlappedResult(hComm,&olWrite,&byte,TRUE) == FALSE){
+                // do smthing
+            }
+
+        }
+    }
+
     return true;
 }
 
 int Read_Thread(void){
-    DWORD dwRes;
-    DWORD dwRead;
-    DWORD dwErrors;
+    
+    
+    
     DWORD byte;
     DWORD MASK;
-    COMSTAT Rcs;
+    
+    OVERLAPPED olWaite;
+    OVERLAPPED olRead;
+    
+    
     while(bEventRun && !fStopRead){
-        
-        ClearCommError( hComm,
-                        &dwErrors,
-                        &Rcs );
 
-        
-        WaitCommEvent(hComm,&MASK,NULL);
-        
-        ReadFile(hComm,RxBuffer,256,&byte,NULL);
-        printf("byte:%d\r\n",byte);
-        printf("Read Data:");
-        
-            
-        for(int i = 0;i < byte;i++){
-            printf(" 0x%02X ",RxBuffer[i]);
+        memset(&olWaite,0,sizeof(olWaite)); 
+        olWaite.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL); 
+        WaitCommEvent(hComm,&MASK,&olWaite);
+
+        if(GetOverlappedResult(hComm,&olWaite,&byte,TRUE)==FALSE){
+            if(GetLastError()!=ERROR_IO_PENDING){
+                printf("Wait Event Wrong \r\n");
+            }
+            else{
+                DWORD dwErrors;
+                COMSTAT Rcs;
+                memset(&Rcs,0,sizeof(Rcs));
+                ClearCommError(hComm,&dwErrors,&Rcs);
+            }
         }
-        printf("\r\n");
+
+        memset(&olRead,0,sizeof(olRead));
+
+        olRead.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
+        DWORD dwRead;
+
+        if(ReadFile(hComm,RxBuffer,sizeof(RxBuffer),&dwRead,&olRead) ==FALSE){
+            
+            if(GetLastError() != ERROR_IO_PENDING){
+                printf("Read Event Wrong\r\n");
+            }
+            else{
+                if(GetOverlappedResult(hComm,&olRead,&dwRead,TRUE) == FALSE){
+                    
+                }
+                else if(dwRead == 0){
+                    printf("Nothing To Read \r\n");
+                }
+                else{
+                    printf("byte:%d \r\n\r\n",byte);
+                    printf("Read Data: ");
+                    for(int i =0;i<dwRead;i++)printf("0x%02X ",RxBuffer[i]);
+                    printf("\r\n");
+                }
+                
+            }
+        }
+
+
         
     }
     printf("Leave\r\n");
