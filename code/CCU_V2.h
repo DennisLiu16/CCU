@@ -20,32 +20,6 @@
 #define CREATE_ERROR	    -1
 #define THREAD_CR_ERROR     -2
 
-/*Time Delay Set*/
-#define WAIT_RX 1000
-#define WAIT_EVERY 100
-
-enum Machine{
-	Initial_OK = 1
-
-
-};
-
-
-
-
-/*Reference
-	Ref : https://www.xanthium.in/Serial-Port-Programming-using-Win32-API
-	Ev-Mask : https://blog.csdn.net/targusyoona/article/details/9624203
-	All Functions: https://nosleep.pixnet.net/blog/post/83847684-%E7%A8%8B%E5%BC%8F%E9%96%8B%E7%99%BC-%7C-kernel32-%E2%80%8Bcomm.c
-	Tutorial Source Multiple Thread :https://www.itdaan.com/tw/2de00f652c01c938d5f9aaabe4cb246c
-	
-	OverLap:https://ffyy99.pixnet.net/blog/post/28789992
-
-	Tutorial:https://www.itread01.com/p/872935.html
-
-*/
-
-
 char* 
 memcat(char *dest, size_t dest_len, const char *src, size_t src_len);
 /**
@@ -98,23 +72,6 @@ bool Request(HANDLE handle ,WORD Event);
  *  WORD   : the Request function,define above
  */
 
-LONG OnReceiveEvent(void);
-
-/**
- * Rx WaitEvent callback
- * Do ReadFile Fucntion 
- * 
- * 
- */
-
-DWORD ThreadProcEvent(LPVOID pParam);
-/**
- * Thread - Create for waitEvent
- * 
- * 
- * 
- */
-
 BOOL Version_Detect_Send(void);
 /**
  *  Detect Version 
@@ -129,5 +86,3 @@ int Read_Thread(void);
  * 
  * 
  */
-
-

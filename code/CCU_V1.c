@@ -344,7 +344,7 @@ DWORD ThreadProcEvent(LPVOID pParam){
         }
 
 
-
+        /*should not use WaitCommEvent*/
         WaitCommEvent(hComm,&dwEvtMask,&Eol);
         if(GetLastError()== ERROR_IO_PENDING){
 
