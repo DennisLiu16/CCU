@@ -5,7 +5,7 @@
 /*Private Include*/
 #include "CCU_V2.h"
 /*Private Define*/
-#define DEFAULT_COM 5
+#define DEFAULT_COM 2
 
 /*Global Var*/
 unsigned char TxBuffer[32];
@@ -21,7 +21,7 @@ bool fStopRead = 0;
 int main(void){
     Initial_Serial(DEFAULT_COM);
     /*WriteFile State*/
-    Version_Detect_Send();
+    CCU_Initial();
 
 
     /*Own Command State*/
@@ -167,25 +167,43 @@ char* CCT(int COM_NUM){
     return start;
 }
 
+int CCU_Initial(){
+
+    printf("Version State\r\n");
+    if(!Version_Detect_Send()){
+        printf("Version Detect Write Failed\r\n");
+    }
+    return true;
+}
+
+
 BOOL Version_Detect_Send(void){
 
     printf("WriteFile Start\r\n");
     DWORD byte;
-    char cmd [] ={0x1B,0x24,0x0D,0x03,0x02,0x0,0x06,0x10,0x98};
-
+    unsigned char cmd [] ={0x1B,0x24,0x0D,0x03,0x02,0x0,0x06,0x10,0x98};
+    printf("\r\n");
+    printf("Write Byte:%d\r\n",sizeof(cmd));
+    printf("Send Data:");
+    for(int i = 0;i<sizeof(cmd);i++)printf("0x%02X ",cmd[i]);
+    printf("\r\n");
 
     OVERLAPPED olWrite;
     olWrite.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL);
 
-    Sleep(1);
+
     if(WriteFile(hComm,cmd,sizeof(cmd),&byte,&olWrite)==FALSE){
         if(GetLastError() != ERROR_IO_PENDING){
             printf("Write File Error \r\n");
+            printf("Last Error:%d\r\n",GetLastError());
+            return FALSE;
         }
 
         else{
             if(GetOverlappedResult(hComm,&olWrite,&byte,TRUE) == FALSE){
                 // do smthing
+                printf("GetOverlapped Write Failed\r\n");
+                return FALSE;
             }
 
         }
@@ -194,9 +212,10 @@ BOOL Version_Detect_Send(void){
     return true;
 }
 
+
+
+
 int Read_Thread(void){
-    
-    
     
     DWORD byte;
     DWORD MASK;
@@ -206,7 +225,7 @@ int Read_Thread(void){
     
     
     while(bEventRun && !fStopRead){
-        printf("\r\n");
+       
         memset(&olWaite,0,sizeof(olWaite)); 
         olWaite.hEvent = CreateEvent(NULL,TRUE,FALSE,NULL); 
         WaitCommEvent(hComm,&MASK,&olWaite);
@@ -244,13 +263,12 @@ int Read_Thread(void){
                 }
             }
         }
-        else{
-            printf("byte:%d \r\n\r\n",dwRead);
-            printf("Read Data: ");
-            for(int i =0;i<dwRead;i++)printf("0x%02X ",RxBuffer[i]);
-            printf("\r\n");
-        }
-                
+        printf("\r\n");
+        printf("Read Byte:%d \r\n\r\n",dwRead);
+        printf("Read Data: ");
+        for(int i =0;i<dwRead;i++)printf("0x%02X ",RxBuffer[i]);
+        printf("\r\n");
+            
 
         
     }

@@ -54,7 +54,7 @@ char* CCT(int COM_NUM);
 		func: Convert int to TCHAR
 */
 
-int UCC_Initial(HANDLE handle);
+int CCU_Initial(void);
 /**
  * 	Deal with UCC Initial e.g set get version, set config...
  * 
